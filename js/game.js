@@ -22,6 +22,11 @@ let lastWordSpawn = 0;
 let recentWords = [];
 const RECENT_LIMIT = 20;
 
+// Detect if user is on mobile device
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+                 ('ontouchstart' in window) || 
+                 (navigator.maxTouchPoints > 0);
+
 // ============================================================
 //  INIT
 // ============================================================
@@ -49,7 +54,14 @@ function resizeCanvas() {
 //  EVENT LISTENERS
 // ============================================================
 function setupEventListeners() {
-  document.getElementById("start-btn").addEventListener("click", startGame);
+  document.getElementById("start-btn").addEventListener("click", () => {
+    // Focus mobile input immediately on user click (only on mobile devices)
+    if (isMobile) {
+      const mobileInput = document.getElementById("mobile-input");
+      if (mobileInput) mobileInput.focus();
+    }
+    startGame();
+  });
 
   const pauseBtn = document.getElementById("pause-btn");
   if (pauseBtn) pauseBtn.addEventListener("click", () => { togglePause(); pauseBtn.blur(); });
@@ -68,12 +80,34 @@ function setupEventListeners() {
   const muteBtn = document.getElementById("mute-btn");
   if (muteBtn) muteBtn.addEventListener("click", () => atmosphereSystem.toggle());
 
+  const fullscreenBtn = document.getElementById("fullscreen-btn");
+  if (fullscreenBtn) {
+    fullscreenBtn.addEventListener("click", () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.log("Fullscreen error:", err);
+        });
+        fullscreenBtn.textContent = "⛶";
+      } else {
+        document.exitFullscreen();
+        fullscreenBtn.textContent = "⛶";
+      }
+    });
+  }
+
   document.getElementById("instructions-btn")
     .addEventListener("click", () => showScreen("instructions-screen"));
   document.getElementById("back-btn")
     .addEventListener("click", () => showScreen("start-screen"));
   document.getElementById("restart-btn")
-    .addEventListener("click", startGame);
+    .addEventListener("click", () => {
+      // Focus mobile input on restart (only on mobile devices)
+      if (isMobile) {
+        const mobileInput = document.getElementById("mobile-input");
+        if (mobileInput) mobileInput.focus();
+      }
+      startGame();
+    });
   document.getElementById("menu-btn")
     .addEventListener("click", () => { showScreen("start-screen"); resetGame(); });
 
@@ -85,11 +119,58 @@ function setupEventListeners() {
     handleTyping(e);
   });
 
-  // Mobile tap-to-focus (keeps keyboard up on mobile)
-  canvas.addEventListener("touchstart", () => {
-    const hidden = document.getElementById("mobile-input");
-    if (hidden) hidden.focus();
-  }, { passive: true });
+  // Mobile tap-to-focus (keeps keyboard up on mobile) - only on mobile devices
+  if (isMobile) {
+    canvas.addEventListener("touchstart", () => {
+      const hidden = document.getElementById("mobile-input");
+      if (hidden) hidden.focus();
+    }, { passive: true });
+
+    // Focus the mobile input when the typing area is tapped/clicked
+    const mobileInput = document.getElementById("mobile-input");
+    const typingDisplay = document.getElementById("typing-display");
+    if (typingDisplay) {
+      typingDisplay.addEventListener("touchend", () => { if (mobileInput) mobileInput.focus(); }, { passive: true });
+      typingDisplay.addEventListener("click",    () => { if (mobileInput) mobileInput.focus(); });
+    }
+
+    if (mobileInput) {
+      let lastVal = "";
+      // Mirror the input into gameState.currentInput so mobile keyboards work
+      mobileInput.addEventListener("input", (ev) => {
+        const raw = ev.target.value || "";
+        const sanitized = raw.replace(/[^a-zA-Z]/g, "").toLowerCase();
+
+        if (sanitized.length < lastVal.length) {
+          // user deleted characters
+          gameState.currentInput = sanitized;
+          gameState.activeWord = null;
+        } else if (sanitized.length > lastVal.length) {
+          // user added characters — process each
+          const added = sanitized.slice(lastVal.length);
+          for (const ch of added) {
+            gameState.currentInput += ch;
+            checkWordMatch();
+          }
+        }
+
+        lastVal = sanitized;
+        // keep the native input in sync with the sanitized value
+        mobileInput.value = sanitized;
+        updateTypingDisplay();
+      });
+
+      mobileInput.addEventListener("keydown", (e) => {
+        if (e.key === "Backspace") {
+          gameState.currentInput = gameState.currentInput.slice(0, -1);
+          gameState.activeWord = null;
+          lastVal = gameState.currentInput;
+          updateTypingDisplay();
+          e.preventDefault();
+        }
+      });
+    }
+  }
 }
 
 // ============================================================
@@ -215,6 +296,14 @@ async function startGame() {
   resizeCanvas();
   updateHUD();
   updateTypingDisplay();
+
+  // Auto-focus mobile input to trigger keyboard (only on mobile devices)
+  if (isMobile) {
+    const mobileInput = document.getElementById("mobile-input");
+    if (mobileInput) {
+      setTimeout(() => mobileInput.focus(), 100);
+    }
+  }
 
   if (!gameState.isMuted) atmosphereSystem.start();
   gameLoop();

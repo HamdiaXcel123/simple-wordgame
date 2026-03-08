@@ -96,11 +96,14 @@
 
       <!-- Game Screen -->
       <div id="game-screen" class="screen">
-        <!-- PAUSE BUTTON ADDED HERE -->
+        <!-- PAUSE BUTTON -->
         <button id="pause-btn" class="pause-toggle-btn">⏸️</button>
         
-        <!-- MUTE BUTTON (Optional, based on your CSS) -->
+        <!-- MUTE BUTTON -->
         <button id="mute-btn" class="icon-btn" style="top: 80px;">🔊</button>
+        
+        <!-- FULLSCREEN BUTTON -->
+        <button id="fullscreen-btn" class="icon-btn" style="top: 140px;">⛶</button>
 
         <div class="hud">
           <div class="hud-item">
@@ -127,6 +130,16 @@
           </div>
           <div class="typing-hint">Start typing any visible word!</div>
         </div>
+        <!-- Mobile keyboard trigger input (hidden off-screen) -->
+        <input id="mobile-input"
+               type="text"
+               inputmode="text"
+               autocomplete="off"
+               autocapitalize="off"
+               autocorrect="off"
+               spellcheck="false"
+               style="position:absolute; left:-9999px; width:1px; height:1px; opacity:0; pointer-events:none;"
+        />
       </div>
 
       <!-- PAUSE OVERLAY SCREEN ADDED HERE -->
